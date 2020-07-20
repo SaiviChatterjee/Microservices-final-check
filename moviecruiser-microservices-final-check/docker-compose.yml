@@ -1,0 +1,89 @@
+version: '3.7'
+services:
+  moviecruiser-mysql:
+    image: mysql:5.6
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=moviecruiser
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=1234
+    ports:
+      - 3307:3306
+    networks:
+      - moviecruiser-network
+
+  eureka-discovery-service:
+    image: eureka-discovery-service
+    build:
+      context: eureka-discovery-service
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+    restart: always
+    networks:
+      - moviecruiser-network
+      
+  zuul-gateway:
+    image: zuul-gateway
+    build:
+      context: zuul-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8765:8765"
+    restart: always
+    depends_on:
+      - eureka-discovery-service
+    networks:
+      - moviecruiser-network
+    environment:
+      - DATABASE_HOST=moviecruiser-mysql
+      - DATABASE_USER=admin
+      - DATABASE_PASSWORD=1234
+      - DATABASE_NAME=moviecruiser
+      - DATABASE_PORT=3306
+   
+  movie-service:
+    image: movie-service
+    build:
+      context: movie-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    restart: always
+    networks:
+      - moviecruiser-network
+    depends_on:
+      - moviecruiser-mysql
+      - eureka-discovery-service
+      - zuul-gateway
+    environment:
+      - DATABASE_HOST=moviecruiser-mysql
+      - DATABASE_USER=admin
+      - DATABASE_PASSWORD=1234
+      - DATABASE_NAME=moviecruiser
+      - DATABASE_PORT=3306
+      
+  authentication-service:
+    image: authentication-service
+    build:
+      context: authentication-service
+      dockerfile: Dockerfile
+    ports:
+      - "9100:9100"
+    restart: always
+    networks:
+      - moviecruiser-network
+    depends_on:
+      - moviecruiser-mysql
+      - eureka-discovery-service
+      - zuul-gateway
+    environment:
+      - DATABASE_HOST=moviecruiser-mysql
+      - DATABASE_USER=admin
+      - DATABASE_PASSWORD=1234
+      - DATABASE_NAME=moviecruiser
+      - DATABASE_PORT=3306
+  
+# Networks to be created to facilitate communication between containers
+networks:
+  moviecruiser-network:
